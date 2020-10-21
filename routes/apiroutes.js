@@ -1,38 +1,59 @@
 //const express = require("express");
 const router = require("express").Router();
 const db = require("../db/db.json");
-const uuid = require("uuid");
+const fs = require("fs");
+const { v4: uuidv4 } = require("uuid");
+const utils = require("util");
+const readAsync = utils.promisify(fs.readFile);
+const writeAsync = utils.promisify(fs.writeFile);
 
 router.get("/notes", (req, res) => {
   res.json(db);
 });
 
-router.post("/notes", (req, res) => { // router.put?
-  const newNote = {
-    id: uuid.v4(),
-    title: req.body.title,
-    text: req.body.text,
-  };
-  if (!newNote.title || !newNote.text) {
-    return res.status(400).json({ msg: "please include a note" });
-  }
-  db.push(newNote);
-  res.redirect("/notes");
+router.post("/notes", (req, res) => {
+  // router.put?
+  let newNote = req.body;
+  let noteID = uuidv4();
+  console.log(newNote);
+  Object.assign(newNote, { id: noteID });
+  console.log(newNote);
+
 });
 
 router.delete("/notes/:id", (req, res) => {
-  const found = db.some(db => db.id === parseInt(req.params.id));
-
-  if (found) {
-    res.json({
-      msg: "note deleted",
-      db: db.filter(db => db.id !== parseInt(req.params.id),
-      )});
-  } else {
-    res.status(400).json({ msg: `No note with id ${req.params.id} ` });
-  }
-
-
+  var noteID = req.params.id;
+  console.log(noteID);
+  fs.readFile("./db/db.json", (err, data) => {
+    if (err) throw err;
+    let database = JSON.parse(data);
+    for (var i = 0; i < database.length; i++) {
+      if (database[i].id === noteID) {
+        database.splice(i, 1);
+      }
+    }
+    fs.writeFile("./db/db.json", JSON.stringify(database), (err) => {
+      if (err) throw err;
+      console.log("Note has been deleted");
+    });
+    res.redirect("/notes");
+    return res.json(database);
+  });
 });
 
 module.exports = router;
+
+
+const writeNote = function(){
+  readAsync("./db/db.json", "utf8").then(function(data) {
+    let database = JSON.parse(data);
+    database.push(newNote);
+   return database;
+
+  }).then(database => {
+    return writeAsync("./db/db.json", JSON.stringify(database))
+
+  }).then(() => {
+    return res.json(newNote);
+  } );
+}
