@@ -7,8 +7,10 @@ const utils = require("util");
 const readAsync = utils.promisify(fs.readFile);
 const writeAsync = utils.promisify(fs.writeFile);
 
-router.get("/notes", (req, res) => {
-  res.json(db);
+router.get("/notes", async (req, res) => {
+
+let data = await readAsync("./db/db.json", "utf8");
+  res.json(JSON.parse(data));
 });
 
 router.post("/notes", (req, res) => {
@@ -18,7 +20,17 @@ router.post("/notes", (req, res) => {
   console.log(newNote);
   Object.assign(newNote, { id: noteID });
   console.log(newNote);
+  readAsync("./db/db.json", "utf8").then(function(data) {
+    let database = JSON.parse(data);
+    database.push(newNote);
+   return database;
 
+  }).then(database => {
+    return writeAsync("./db/db.json", JSON.stringify(database))
+
+  }).then(() => {
+    return res.json(newNote);
+  } );
 });
 
 router.delete("/notes/:id", (req, res) => {
@@ -36,7 +48,7 @@ router.delete("/notes/:id", (req, res) => {
       if (err) throw err;
       console.log("Note has been deleted");
     });
-    res.redirect("/notes");
+   
     return res.json(database);
   });
 });
@@ -44,16 +56,3 @@ router.delete("/notes/:id", (req, res) => {
 module.exports = router;
 
 
-const writeNote = function(){
-  readAsync("./db/db.json", "utf8").then(function(data) {
-    let database = JSON.parse(data);
-    database.push(newNote);
-   return database;
-
-  }).then(database => {
-    return writeAsync("./db/db.json", JSON.stringify(database))
-
-  }).then(() => {
-    return res.json(newNote);
-  } );
-}
